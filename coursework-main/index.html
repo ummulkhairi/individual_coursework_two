@@ -1,0 +1,206 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CourseWork</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.16.2/axios.js"> </script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script> 
+</head>
+<body>
+    <div id="app" >
+        <div class="flex justify-between">
+            <h1 class="title-font text-2xl font-bold text-blue-800 pl-8 pt-8" v-text="sitename"></h1>
+            <div class="p-8 flex">
+                <button v-on:click="sortSubject"  class="flex mt-6 text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none  rounded-full">Subject</button>
+                <button v-on:click="sortPrice"  class="flex mt-6 text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none  rounded-full">Price</button>
+                <button v-on:click="sortAvailable"  class="flex mt-6 text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none  rounded-full">Availability</button>
+                <button v-on:click="sortLocation"  class="flex mt-6 text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none  rounded-full">Location</button>
+                <input type="text" placeholder="Search" v-model="userInput"  class="w-30 ml-4 bg-gray-100 rounded-full border bg-opacity-50 border-gray-300 focus:ring-2 focus:ring-indigo-200 focus:bg-transparent focus:border-indigo-500 text-base outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out">
+
+            </div>
+            <div class="mr-8">
+                <button v-on:click="displayCart" v-if="canDisplayCart" class="flex mt-6 text-white bg-black border-0 py-2 px-6 focus:outline-none hover:bg-black rounded-full "> <span class="fa fa-shopping-cart mt-1 mr-2"></span>Cart</button>
+                <button v-else disabled  class="flex mt-6 text-white bg-black opacity-25 border-0 py-2 px-6 focus:outline-none hover:bg-black rounded-full " ><span class="fa fa-shopping-cart mt-1 mr-2"></span>Cart</button>
+            
+                    
+              </div>
+        </div>
+
+        <section class="text-gray-600 body-font">
+            
+                
+              <div class="flex flex-wrap -m-4" v-if="display">
+                <div class="p-4 " v-for="lesson in lessons" >
+    
+                      <div class="flex">
+                        <img class="lg:h-48 md:h-36" v-bind:src="lesson.image" alt="blog">
+                        <div class="p-6">
+                        
+                          <h1 class="title-font text-lg font-medium text-gray-900 mb-3" v-text="lesson.title"></h1>
+                          <h1 class="title-font text-lg font-medium text-gray-900 mb-3" v-text="lesson.location"></h1>
+                          <h1 class="title-font text-lg font-medium text-gray-900 mb-3" >Price:${{lesson.price}}</h1>
+                          <h1 class="title-font text-lg font-medium text-gray-900 mb-3" >Number of spaces:{{lesson.space}}</h1>
+                          
+                          <button v-on:click="addCart(lesson)" v-if="canCart(lesson)" class="flex mt-6 text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none  rounded-full">Add to cart</button>
+                    <button v-else disabled  class="flex mt-6 text-white bg-blue-900 opacity-25 border-0 py-2 px-6 focus:outline-none rounded-full">Add to cart</button>
+                
+                         
+                        </div>
+                      </div>
+                   
+                 
+                </div>
+             
+    </div>
+    <div v-else>
+        <div class="flex">
+            <input type="text" placeholder="Name" v-model="name" class="w-30 ml-4 bg-gray-100 rounded-full border bg-opacity-50 border-gray-300 focus:ring-2 focus:ring-indigo-200 focus:bg-transparent focus:border-indigo-500 text-base outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out">
+            <input type="text" placeholder="Phone" v-model="phone" class="w-30 ml-4 bg-gray-100 rounded-full border bg-opacity-50 border-gray-300 focus:ring-2 focus:ring-indigo-200 focus:bg-transparent focus:border-indigo-500 text-base outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out">
+            <button v-if="check" v-on:click="checkout" class=" ml-4 flex mt-6 text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none  rounded-full">Checkout</button>
+            <button v-else disabled  class="ml-4 flex mt-6 text-white bg-blue-900 opacity-25 border-0 py-2 px-6 focus:outline-none rounded-full">Checkout</button>
+        </div>
+    </div>
+          </section>
+
+    </div>
+    
+</body>
+<script>
+    var store = new Vue({
+        el:'#app',
+        data:{
+            sitename:'After School Club',
+            
+            lessons:[],
+            nameCheck:'',
+            passCheck:'',
+            phone:'',
+            name:'',
+            userInput:'',
+cart:[],
+display:true,
+        },
+        created:function (){
+         this.fetchLessons();
+        },
+        methods:{
+            addCart(lesson){
+               
+                this.cart.push(lesson.id)
+                
+                   lesson.space --;
+            },
+            search(searchQuery){
+                this.lessons.filter((lesson)=> {return lesson.title.toLowerCase().match(this.userInput.toLowerCase())});
+            },
+            displayCart(){
+                this.display = !this.display
+            },
+            fetchLessons(){
+                fetch("http://localhost:3000/collection/lesson")
+                        .then(res => {
+                            return res.json()
+                        })
+                        .then(data => {
+                            this.lessons = data
+                        })
+                        .catch(err => {
+                            lessons = "unable to get data"
+                            console.log("unable to get lessons")
+                        })
+            },
+          canCart:function(lesson){
+            return lesson.availableSpace > this.cartCount(lesson.id)
+           },
+           cartCount(lessonId){
+                let count = 0;
+
+                for (let index = 0; index < this.cart.length; index++) {
+                    if(lessonId === this.cart[index]){
+                        count ++;
+                    }
+                }
+                
+                return count;
+            } ,
+            checkout(){
+                alert('Your order has been submitted')
+                this.display = true;
+            },
+            sortSubject(){
+                this.lessons.sort((obj1,obj2)=>{
+                    if(obj1.title == obj2.title) return 0;
+                    if(obj1.title < obj2.title) return -1;
+                    return 1;
+                });
+            },
+            sortLocation(){
+                this.lessons.sort((obj1,obj2)=>{
+                    if(obj1.location == obj2.location) return 0;
+                    if(obj1.location < obj2.location) return -1;
+                    return 1;
+                });
+            },
+            sortPrice(){
+                this.lessons.sort((obj1,obj2)=>{
+                    if(obj1.price == obj2.price) return 0;
+                    if(obj1.price < obj2.price) return -1;
+                    return 1;
+                });
+            },
+            sortAvailable(){
+                this.lessons.sort((obj1,obj2)=>{
+                    if(obj1.space == obj2.space) return 0;
+                    if(obj1.space < obj2.space) return -1;
+                    return 1;
+                });
+            }
+        },
+        watch: {
+        parsedInput() {
+            this.search()
+        }
+    },
+        computed:{
+           
+            canDisplayCart(){
+           return   this.cart.length > 0 ? true : false
+           }, checkRegex(){
+            var reg = /^[0-9]{9,12}$/;
+            
+            if(reg.test(this.phone)){
+              this.passCheck = true;
+return true;
+          
+            }else{
+              this.passCheck = false;
+          return false;
+            }
+            
+           },
+           checkName(){
+            var regex = /^[a-zA-Z ]{2,30}$/;
+
+            if(regex.test(this.name)){
+              this.nameCheck = true;
+          return true;
+            }else {
+              this.nameCheck = false;
+          return false
+            }
+           },
+           check(){
+             if(this.nameCheck && this.passCheck){
+               return true;
+             }
+             return false;
+           },
+           parsedInput () {
+            return this.userInput;  
+        }
+        }
+    });
+</script>
+</html>
