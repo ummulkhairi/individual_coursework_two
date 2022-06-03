@@ -1,98 +1,103 @@
+const path = require('path')
+const fs = require('fs')
 const express = require('express')
 const app = express()
 const cors = require('cors')
 
-// REQUIRED MODULES FOR STATIC FILE
-var path = require("path")
-var fs = require("fs")
-
 app.use(express.json())
-app.use(cors())
+app.use(cors());
 
-// LOGGER MIDDLEWARE
-app.use(function (req, res, next) {
-    console.log("Request URL: " + req.url);
-    console.log("Request Date: " + new Date());
-    next();
-});
-
-// STATIC FILE SERVER MIDDLEWARE
-app.use(function (req, res, next) {
-    // Uses path.join to find the path where the file should be
-    var filePath = path.join(__dirname, "static", req.url);
-    // Built-in fs.stat gets info about a file
-    fs.stat(filePath, function (err, fileInfo) {
-        if (err) {
-            next();
-            return;
-        }
-        if (fileInfo.isFile()) res.sendFile(filePath);
-        else next();
-    });
-});
-
+// MONGODB CONNECTION
 const MongoClient = require('mongodb').MongoClient;
-
-//SELECT DATABASE
 let db;
 MongoClient.connect("mongodb+srv://Ummulkhairi:Ummujalo2002@cluster0.r09jh.mongodb.net/?retryWrites=true&w=majority", (err, client) => {
     db = client.db('lesson-store')
 })
-//SELECT COLLECTION
+
+// GET THE COLLECTION NAME
 app.param('collectionName', (req, res, next, collectionName) => {
     req.collection = db.collection(collectionName)
     return next()
 })
-//DISPLAY A MESSAGE FOR ROOT PATH TO SHOW THAT API IS WORKING
-app.get('/', (req, res, next) => {
-    res.send('Select a collection, e.g., /collection/messages')
+
+// MIDDLEWARE FOR LOGGING
+app.use(function(req, res, next){
+    console.log("Request type: "+req.method)
+    console.log("Request url: "+req.url)
+    console.log("Request date: "+new Date())
+    console.log("Request IP: "+req.ip)
+    next()
 })
-//RETRIEVE ALL THE OBJECTS FROM A COLLECTION
+
+app.get('/', (req, res) => {
+    res.send("Welcome to entry point")
+})
+
+// GET ALL LESSONS FOM DB
 app.get('/collection/:collectionName', (req, res) => {
-    req.collection.find({}).toArray((error, results) => {
-        if (error) return next(error)
+    req.collection.find({}).toArray((err, results) => {
+        if (err) return next(err)
         res.send(results)
     })
 })
 
-//ADD AN OBJECT
-app.post('/collection/:collectionName', (req, res, next) => {
-    req.collection.insertOne(req.body, (error, results) => {
-        if (error) return next(error)
-        res.send(results.ops)
+// ADD USER'S ORDER TO DB
+app.post('/collection/:collectionName', (req, res) => {
+    let doc = req.body
+    req.collection.insertOne(doc, (err, result) => {
+        if (err) return next(err)
+        res.send({msg: "order added successfully"})
     })
 })
 
-//UPDATE AN OBJECT BY ID
-app.put('/collection/:collectionName/:id', (req, res, next) => {
-    req.collection.updateOne(
-        {_id: new ObjectID(req.params.id)},
-        {$set: req.body},
-        {safe: true, multi: false},
-        (error, result) => {
-            if (error) return next(error)
-            res.send((result.result.n === 1) ?
-                {msg: 'success'} : { msg: 'error'})
+// UPDATE SPACES OF LESSONS IN DB AFTER ORDER
+app.put('/collection/:collectionName', (req, res) => {
+    req.body.forEach((item) => {
+        let filter = { id: item.id }
+        let new_value = { $set: {space: item.space} }
+        let options = { safe: true, multi: false }
+        req.collection.updateOne(filter, new_value, options, (err, result) => {
+            if (err) return next(err)
         })
+    });
+    res.send({msg: "spaces successfully updated"})
 })
 
-//DELETE AN OBJECT BY ID
-app.delete('/collection/:collectionName/:id', (req, res, next) => {
-    req.collection.deleteOne(
-        {_id: ObjectID(req.params.id)},
-        (error, result) => {
-            if (error) return next(error)
-            res.send((result.result.n === 1) ?
-                {msg: 'success'} : {msg: 'error'})
-        })
+// BACKEND SEARCH FUNCTION
+app.get('/collection/:collectionName/search', (req, res) => {
+    let search_keyword = req.query.search
+    req.collection.find({}).toArray((err, results) => {
+        if (err) return next(err)
+        let filteredList = results.filter((lesson) => {
+            return lesson.title.toLowerCase().match(search_keyword.toLowerCase()) || lesson.location.toLowerCase().match(search_keyword.toLowerCase())
+        });  
+        res.send(filteredList)
+    })
 })
 
-app.use(function (req, res) {
-    // Sets the status code to 404
-    res.status(404);
-    // Sends the error "File not found!”
-    res.send("File not found!");
-});
+// STATIC FILE MIDDLEWARE
+app.use(function(req, res, next){
+    var filePath = path.join(__dirname, "static", req.url)
+    fs.stat(filePath, function(err, fileInfo){
+        if (err) {
+            next()
+            return
+        }
+        if (fileInfo.isFile()) {
+            res.sendFile(filePath)
+        }
+        else{
+            next()
+        }
+    })
+})
+
+app.use(function(req, res){
+    res.status(404)
+    res.send("file not found")
+})
 
 const port = process.env.PORT || 3000
-app.listen(port)
+app.listen(port, () => {
+    console.log("Running on port 3000")
+})
